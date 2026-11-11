@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ChatGPT</title>
+
+    <!-- Configuration PWA & Plein Écran -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#212121">
+    
+    <!-- Support iOS / Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ChatGPT">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <!-- Favicon pour le navigateur -->
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <style>
+        :root {
+            --bg-color: #212121;
+            --sidebar-bg: #171717;
+            --text-color: #ececec;
+            --text-secondary: #b4b4b4;
+            --input-bg: #2f2f2f;
+            --user-bubble: #2f2f2f;
+            --border-color: #383838;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* BLOCAGE ANTI-LOGO / ANTI-BADGE NETLIFY */
+        [class*="netlify"], 
+        [id*="netlify"],
+        iframe[src*="netlify"],
+        div[data-netlify-badge],
+        .netlify-badge {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        aside {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .new-chat-btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .new-chat-btn:hover {
+            background-color: var(--input-bg);
+        }
+
+        .history-list {
+            list-style: none;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .history-item {
+            padding: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item:hover {
+            background-color: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding-bottom: 160px;
+        }
+
+        .message {
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            gap: 16px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.user .bubble {
+            background-color: var(--user-bubble);
+            padding: 10px 16px;
+            border-radius: 20px;
+            max-width: 70%;
+        }
+
+        .message.assistant .bubble {
+            background-color: transparent;
+            color: var(--text-color);
+            flex: 1;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .avatar.assistant-avatar {
+            background-color: #10a37f;
+            color: white;
+        }
+
+        .input-area {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            background: transparent;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .input-wrapper {
+            max-width: 768px;
+            width: 100%;
+            background-color: var(--input-bg);
+            border-radius: 26px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 15px;
+            resize: none;
+            max-height: 200px;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s, transform 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: #3f3f3f;
+            color: var(--text-color);
+        }
+
+        .icon-btn.listening {
+            background-color: #ef4444 !important;
+            color: white !important;
+            animation: pulse 1.2s infinite;
+        }
+
+        .send-btn {
+            background-color: #ececec;
+            color: #212121;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .alert-banner {
+            background-color: #7f1d1d;
+            color: #fecaca;
+            padding: 8px 12px;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            aside { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside>
+        <button class="new-chat-btn" onclick="location.reload()">+ Nouvelle discussion</button>
+        <ul class="history-list">
+            <li class="history-item">Batailles historiques</li>
+            <li class="history-item">Système solaire</li>
+            <li class="history-item">Culture générale</li>
+        </ul>
+    </aside>
+
+    <div class="main-container">
+        <div id="alertBanner" class="alert-banner">
+            ⚠️ La reconnaissance vocale nécessite un protocole HTTPS ou un serveur Netlify.
+        </div>
+
+        <div class="chat-header">
+            <span>ChatGPT <span style="color: var(--text-secondary); font-weight: normal;">4o</span></span>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div class="avatar assistant-avatar">GPT</div>
+                <div class="bubble">Bonjour ! Comment puis-je vous aider aujourd'hui ?</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="userInput" rows="1" placeholder="Envoyer un message..."></textarea>
+                <div class="action-buttons">
+                    <button class="icon-btn" id="micBtn" title="Activer la reconnaissance vocale">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const textarea = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const micBtn = document.getElementById('micBtn');
+        const alertBanner = document.getElementById('alertBanner');
+
+        if (window.location.protocol === 'file:') {
+            alertBanner.style.display = 'block';
+        }
+
+        // --- SYNTHÈSE VOCALE (VOIX HOMME DOUCE) ---
+        let availableVoices = [];
+
+        function loadVoices() {
+            if ('speechSynthesis' in window) {
+                availableVoices = window.speechSynthesis.getVoices();
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) return;
+
+            window.speechSynthesis.cancel(); // Arrête toute lecture en cours
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'fr-FR';
+            
+            // Réglages pour une voix naturelle et posée
+            utterance.pitch = 0.95; 
+            utterance.rate = 0.95;  
+
+            // Recherche prioritaires des voix d'hommes françaises connues
+            const frenchMaleVoice = availableVoices.find(voice => 
+                voice.lang.includes('fr') && (
+                    voice.name.toLowerCase().includes('thomas') || 
+                    voice.name.toLowerCase().includes('paul') || 
+                    voice.name.toLowerCase().includes('nicolas') || 
+                    voice.name.toLowerCase().includes('male') || 
+                    voice.name.toLowerCase().includes('man') ||
+                    voice.name.toLowerCase().includes('gilles') ||
+                    voice.name.toLowerCase().includes('google français')
+                )
+            );
+
+            const defaultFrenchVoice = availableVoices.find(voice => voice.lang.startsWith('fr'));
+
+            if (frenchMaleVoice) {
+                utterance.voice = frenchMaleVoice;
+            } else if (defaultFrenchVoice) {
+                utterance.voice = defaultFrenchVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- GESTION DES MESSAGES ---
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            sendBtn.disabled = this.value.trim() === '';
+        });
+
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendBtn.disabled) handleUserMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', handleUserMessage);
+
+        function handleUserMessage() {
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            appendMessage(text, 'user');
+            textarea.value = '';
+            textarea.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            setTimeout(() => {
+                const response = getSecretResponse(text);
+                appendMessageTyped(response);
+            }, 500);
+        }
+
+        function appendMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            if (sender === 'user') {
+                messageDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="avatar assistant-avatar">GPT</div>
+                    <div class="bubble">${text}</div>
+                `;
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function appendMessageTyped(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.innerHTML = `
+                <div class="avatar assistant-avatar">GPT</div>
+                <div class="bubble"></div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            const bubble = messageDiv.querySelector('.bubble');
+            
+            // Démarrage simultané de la parole et du texte tapé
+            speakText(text);
+
+            let i = 0;
+            function typeWriter() {
+                if (i < text.length) {
+                    bubble.textContent += text.charAt(i);
+                    i++;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    setTimeout(typeWriter, 20);
+                }
+            }
+            typeWriter();
+        }
+
+        // --- SCÉNARIO MENTALISME : DÉTECTION ET RÉPONSES FORCÉES ---
+        function getSecretResponse(question) {
+            const clean = question.toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u06ff]/g, "")
+                .replace(/[^a-z0-9\s]/g, "");
+
+            // 1. Première bataille (Marignan 1515)
+            if (clean.includes("nom d une bataille") || (clean.includes("bataille") && !clean.includes("deuxieme") && !clean.includes("2eme") && !clean.includes("autre") && !clean.includes("troisieme") && !clean.includes("3eme"))) {
+                return "La bataille de Marignan s'est déroulée les 13 et 14 septembre 1515. Elle s'est conclue par une victoire décisive du roi de France François Ier face aux mercenaires suisses.";
+            } 
+            // 2. Deuxième bataille (Stalingrad)
+            else if (clean.includes("deuxieme") || clean.includes("2eme") || clean.includes("seconde")) {
+                return "La bataille de Stalingrad s'est déroulée du 23 août 1942 au 2 février 1943. C'est un affrontement majeur de la Seconde Guerre mondiale qui a marqué un tournant décisif sur le front de l'Est.";
+            } 
+            // 3. Troisième bataille (Alésia)
+            else if (clean.includes("troisieme") || clean.includes("3eme") || clean.includes("autre bataille")) {
+                return "La bataille d'Alésia s'est déroulée en 52 avant Jésus-Christ. Elle oppose l'armée gauloise menée par Vercingétorix aux légions romaines de Jules César, marquant la défaite finale de la résistance gauloise.";
+            } 
+            // 4. Une planète (Jupiter)
+            else if (clean.includes("planete")) {
+                return "Jupiter est la plus grande planète du système solaire, réputée pour sa masse imposante et sa célèbre Grande Tache Rouge.";
+            } 
+            // 5. Ville, nombre et couleur (Tokyo, 17, Bleu)
+            else if (clean.includes("ville") || clean.includes("couleur") || clean.includes("nombre")) {
+                return "Voici le résultat : la ville de Tokyo, le nombre 17, et la couleur bleu.";
+            } 
+            // Réponse par défaut
+            else {
+                return "C'est une excellente question. L'histoire et les connaissances sont vastes, que souhaitez-vous savoir en particulier ?";
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // --- RECONNAISSANCE VOCALE WEB SPEECH API ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'fr-FR';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('listening');
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                textarea.value = speechResult;
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+                sendBtn.disabled = false;
+                
+                micBtn.classList.remove('listening');
+                isListening = false;
+
+                // Envoi automatique après capture vocale
+                handleUserMessage();
+            };
+
+            recognition.onerror = (e) => {
+                console.warn("Erreur ou interruption vocale :", e.error);
+                micBtn.classList.remove('listening');
+                isListening = false;
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('listening');
+                isListening = false;
+            };
+
+            micBtn.addEventListener('click', () => {
+                // Déblocage de la voix audio au premier clic utilisateur (Safari / Mobile)
+                if (window.speechSynthesis && window.speechSynthesis.speak) {
+                    const silentUtterance = new SpeechSynthesisUtterance("");
+                    window.speechSynthesis.speak(silentUtterance);
+                }
+
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch(err) {
+                        console.error("Impossible d'activer le micro:", err);
+                    }
+                }
+            });
+        } else {
+            micBtn.style.opacity = '0.5';
+            micBtn.title = "Reconnaissance vocale non prise en charge par ce navigateur";
+            micBtn.addEventListener('click', () => {
+                alert("La reconnaissance vocale nécessite Safari sur iOS ou Chrome sur Android/PC avec une connexion HTTPS.");
+            });
+        }
+    </script>
+</body>
+</html>
